@@ -1,111 +1,229 @@
-# Spotify (y WHOOP) en varias dimensiones: DS5343 Tarea 3
+# Sound Lab: Spotify y WHOOP en varias dimensiones
 
-Aplicación Flask + D3 v7 que responde tres preguntas sobre el dataset de Spotify 1921–2020 (Kaggle, Yamaç Eren Ay) con RadViz, Star Coordinates, coordenadas paralelas y proyecciones PCA / t-SNE / UMAP.
+**Curso:** DS5343 Visualización de Datos, UTEC 2026-2
+**Tarea 3:** Multidimensional Data Visualization
+**Tecnología:** Flask (Python) para los datos y D3 v7 para toda la visualización
+***Integrantes: *** Paolo Medrano & Gianella Lira
+Aplicación web que responde cuatro preguntas con RadViz, Star Coordinates, coordenadas paralelas y proyecciones PCA, t-SNE y UMAP. Incluye una playlist personal que se escucha dentro de la app y un laboratorio que muestra en vivo cómo se genera una recomendación.
 
-## Ejecutar
+---
+
+## Contenido
+
+1. [Cómo ejecutar](#1-cómo-ejecutar)
+2. [Datos](#2-datos)
+3. [Preguntas y hallazgos](#3-preguntas-y-hallazgos)
+4. [Laboratorio de recomendación](#4-laboratorio-de-recomendación)
+5. [Mi playlist](#5-mi-playlist)
+6. [Interacciones](#6-interacciones)
+7. [Decisiones de diseño](#7-decisiones-de-diseño)
+8. [Cumplimiento de la rúbrica](#8-cumplimiento-de-la-rúbrica)
+9. [Orden de la exposición](#9-orden-de-la-exposición)
+
+---
+
+## 1. Cómo ejecutar
 
 ```bash
 pip install flask
-python app.py            # http://127.0.0.1:5000
+python app.py
 ```
 
-Los datos ya vienen procesados en `data/processed/`. Para regenerarlos: `pip install -r requirements.txt` y `python preprocess.py`. D3 está incluido en `static/js/`, así que la app funciona sin internet.
+Luego abrir **http://127.0.0.1:5000** en el navegador.
 
-## Datos
+- Para regenerarlos: `pip install -r requirements.txt` y luego `python preprocess.py`.
+- Las visualizaciones funcionan sin internet. El reproductor de música sí necesita conexión.
 
-| Pregunta | Archivo | Variables | Muestra |
+### Estructura del proyecto
+
+| Carpeta o archivo | Contenido |
+|---|---|
+| `app.py` | Servidor Flask y rutas de datos, búsqueda y recomendación |
+| `preprocess.py` | Limpieza, muestreo, normalización, K-means y proyecciones |
+| `data/raw/` | CSV originales de Kaggle |
+| `data/processed/` | Archivos JSON que usa el navegador |
+| `templates/index.html` | Estructura de la página |
+| `static/js/` | Código D3: vistas, playlist, reproductor y laboratorio |
+| `static/css/style.css` | Tema visual |
+
+---
+
+## 2. Datos
+
+**Fuentes:** Spotify Dataset 1921–2020 (Kaggle, Yamaç Eren Ay) y WHOOP Fitness Dataset (Kaggle).
+
+| Pregunta | Archivo | Variables | Muestra dibujada |
 |---|---|---|---|
-| P1 | `data.csv` | tempo, liveness, energy, danceability, popularity | 2 200 canciones, 200 por década (sin duplicados, sin tempo 0 ni grabaciones habladas con speechiness > 0.66) |
-| P2 | `data_by_artist.csv` | loudness, danceability, liveness, popularity | 1 804 artistas con ≥ 5 canciones, 450 por banda de popularidad (las 5 bandas quedan comparables) |
-| P3 | `data_by_year.csv` | year, liveness, popularity | los 100 años completos |
-| P4 | `whoop_fitness_dataset_100k.csv` | activity_type, zonas FC 1–5, FC media, strain, duración, recovery | 2 000 sesiones, 250 por actividad |
+| P1 | `data.csv` | tempo, liveness, energy, danceability, popularity | 2 200 canciones, 200 por década |
+| P2 | `data_by_artist.csv` | loudness, danceability, liveness, popularity | 1 804 artistas, 450 por banda de popularidad |
+| P3 | `data_by_year.csv` | year, liveness, popularity | Los 100 años completos |
+| P4 | `whoop_fitness_dataset_100k.csv` | zonas de FC 1 a 5, % FC máxima, strain, duración, recovery | 2 000 sesiones, 250 por actividad |
 
-Las curvas de medias, correlaciones y perfiles por banda se calculan con el dataset **completo** (151 mil canciones y 10 417 artistas); la muestra solo se usa para dibujar puntos y líneas sin saturar el SVG. Normalización para RadViz y Star Coordinates: los atributos 0–1 conservan su dominio; tempo y loudness se escalan entre los percentiles 1 y 99.
+### Preprocesamiento
 
-## Preguntas, tasks y vistas
+- **Limpieza:** se eliminan canciones duplicadas, con tempo 0 y grabaciones habladas (speechiness mayor a 0.66). Quedan 151 363 canciones.
+- **Muestreo estratificado:** evita que las décadas recientes, los artistas poco populares o una sola actividad dominen los gráficos.
+- **Promedios y correlaciones:** siempre se calculan con el dataset completo. La muestra solo se usa para dibujar sin saturar la pantalla.
+- **Normalización:** los atributos que ya van de 0 a 1 conservan su escala. Tempo y loudness se escalan entre sus percentiles 1 y 99.
+- **Variables derivadas en WHOOP:** porcentaje del tiempo en cada zona y % de FC máxima, calculado como FC media / (220 − edad).
 
-**P1. ¿Cómo varía la danceability de una canción en relación con su tempo, liveness y energy?**
-Task: comparar la danceability según las variaciones de tempo, liveness y energy para identificar patrones.
-Vistas: small multiples con curva de medias por intervalo, coordenadas paralelas (danceability al centro), Star Coordinates con preset «Aislar», RadViz. Color: danceability (viridis).
-Hallazgo: tempo tiene r ≈ 0, pero la curva muestra una U invertida con pico ~0.60 entre 110 y 120 BPM; energy repite el patrón (pico ~0.61 en 0.65–0.70); liveness es la única relación negativa (r = −0.12). Un coeficiente de Pearson no ve estas relaciones no lineales; la curva sí.
+---
 
-**P2. ¿Cómo se relaciona la popularidad de los artistas con loudness, liveness y danceability?**
-Task: identificar y comparar patrones en la popularidad según esos tres atributos.
-Vistas: proyección PCA / t-SNE / UMAP de los tres atributos con K-means (k = 3), RadViz con ancla opcional de popularity, perfil por banda de popularidad (dataset completo vs. selección), coordenadas paralelas. Color: popularity (magma) o cluster.
-Hallazgo: loudness es el atributo más asociado (r = +0.56), luego danceability (+0.38); liveness va en contra (−0.19). De la banda 0–20 a 81–100, el volumen medio sube de −14.6 a −5.2 dB y la danceability de 0.47 a 0.74. K-means separa «Fuerte y bailable» (pop. media 47), «Sonido en vivo» (24) y «Suave y tranquilo» (20). Parte del efecto del volumen es época: los artistas recientes graban más fuerte y también son los más escuchados hoy.
+## 3. Preguntas y hallazgos
 
-**P3. ¿Cómo han variado el liveness y la popularidad a través de los años?**
-Task: comparar su evolución temporal e identificar períodos con cambios o patrones similares.
-Vistas: series de tiempo (doble eje o puntaje z, con suavizado), barra de correlación móvil con ventana ajustable, dispersión conectada animada.
-Hallazgo: en el siglo van en sentidos opuestos (r = −0.61), pero la correlación móvil de 10 años marca dos períodos en que se mueven juntas: ~1956–1966 y ~1991–2000 (franjas sombreadas).
+### P1. ¿Cómo varía la danceability de una canción en relación con su tempo, liveness y energy?
 
-**P4. ¿Cómo se distribuye la intensidad cardíaca de las sesiones según la actividad, y qué música encaja con cada intensidad?** (dataset `whoop`, WHOOP Fitness Dataset de Kaggle)
-Task: comparar las sesiones de entrenamiento por tipo de actividad según sus zonas de frecuencia cardíaca, % de FC máxima y strain, y vincular cada nivel de intensidad con canciones de tempo y energy acordes.
-Datos: `whoop_fitness_dataset_100k.csv` (100 mil días de 286 usuarios, 2023-01 a 2024-02). Se usan las 54 010 sesiones con entrenamiento; muestra de 250 por actividad (2 000). Variables derivadas: % del tiempo en cada zona (zona / suma de zonas) y % de FC máxima = FC media / (220 − edad).
-Vistas: barras apiladas de zonas por actividad (dataset completo, clic para filtrar), RadViz con las 5 zonas como anclas, coordenadas paralelas de sesiones y el mapa «Música para la intensidad» (tempo × energy del catálogo de canciones).
-Puente con la música: los dos datasets no comparten personas ni canciones, así que se conectan con una **regla de diseño declarada** (no es un dato): intensidad moderada (< 70 % FC máx) a 90–120 BPM y energy 0.3–0.6; alta (70–80 %) a 120–140 BPM y energy 0.6–0.8; muy alta (> 80 %) a 140–175 BPM y energy ≥ 0.8. Al filtrar sesiones, el mapa toma la intensidad que predomina, sugiere canciones del catálogo y clasifica las canciones de «Mi playlist».
-Hallazgo: HIIT es la actividad más intensa (84 % de FC máx, 49 % del tiempo en zonas 4–5) y Walking la más suave (69 %, 79 % en zonas 1–2). Solo el 4.2 % del catálogo cumple la regla de intensidad muy alta. Los días en rojo (recovery ≤ 33) se entrena más suave (strain 8.9 frente a 11.1 en verde). El recovery depende de la HRV frente a su línea base (r = +0.33) y de la FC en reposo (r = −0.41), pero casi nada del sueño (r = +0.01) y los niveles de fitness son casi idénticos: en datos reales de WHOOP eso sería raro, lo que sugiere que el dataset es sintético.
+**Task:** comparar la danceability según las variaciones de tempo, liveness y energy para identificar patrones entre estos atributos.
 
-## Laboratorio de recomendación (en vivo)
+**Vistas:** gráficos de dispersión con curva de promedios, coordenadas paralelas, Star Coordinates y RadViz.
 
-Sección «Laboratorio» del menú. Hace visible cómo se construye una recomendación, sin cajas negras:
+**Hallazgos:**
+- El tempo no se correlaciona con la danceability (r = −0.01), pero la relación existe: tiene forma de **U invertida**, con un máximo de 0.60 entre 110 y 120 BPM.
+- Energy sigue el mismo patrón, con un máximo de 0.61 entre 0.65 y 0.70.
+- Liveness es la única relación negativa (r = −0.12): lo grabado en vivo se baila menos.
 
-1. **Espacio 4D**: 3 000 canciones populares (popularidad ≥ 40) con tempo, liveness, energy y danceability normalizados de 0 a 1. Se dibujan con PCA (69 % de la varianza) y flechas que indican hacia dónde crece cada atributo.
-2. **K-means en vivo** (k de 2 a 8, velocidad ajustable): el algoritmo corre en el navegador. En cada iteración las canciones cambian de color, los centroides se desplazan, los contornos (convex hull) se deforman, la curva de inercia baja y los perfiles de cada cluster se actualizan con un nombre automático («Rápidas y enérgicas»…). Se detiene cuando cambia menos del 0,2 % de las canciones.
-3. **Recomendación animada**: las canciones de tu playlist convergen a su centro (promedio 4D, la estrella verde), se ilumina su cluster, el radio de búsqueda crece y las 10 canciones más cercanas (distancia euclidiana 4D) se conectan una por una. Cada una muestra su cercanía y en qué atributos se diferencia de tu centro.
-4. **Exploración**: la estrella se arrastra; el punto del mapa se lleva de vuelta a 4D (PCA inversa) y las recomendaciones se recalculan en tiempo real. Mayús+clic en cualquier canción la usa como semilla. Clic en cualquier punto: escucharla.
+### P2. ¿Cómo se relaciona la popularidad de los artistas con loudness, liveness y danceability?
 
-## Interfaz
+**Task:** identificar y comparar patrones en la popularidad de los artistas según sus niveles de loudness, liveness y danceability.
 
-Tema oscuro inspirado en la app de escritorio de Spotify: navegación y biblioteca a la izquierda, contenido al centro, hallazgo y elemento fijado a la derecha y reproductor fijo abajo. Es una interfaz inspirada, sin logos ni marcas de Spotify.
+**Vistas:** proyección PCA, t-SNE y UMAP con K-means, RadViz, perfil por banda de popularidad y coordenadas paralelas.
 
-## Mi playlist (las canciones que quiero escuchar)
+**Hallazgos:**
+- El volumen es lo que más acompaña a la popularidad (r = +0.56), seguido de la danceability (r = +0.38). Liveness va en contra (r = −0.19).
+- De los artistas menos populares a los más populares, el volumen medio sube de −14.6 a −5.2 dB y la danceability de 0.47 a 0.74.
+- K-means encuentra tres perfiles: **Fuerte y bailable** (popularidad media 47), **Sonido en vivo** (24) y **Suave y tranquilo** (20).
+- Parte del efecto es de época: los artistas recientes graban más fuerte y hoy son los más escuchados.
 
-Panel derecho de la app. Conecta el análisis con las canciones propias:
+### P3. ¿Cómo han variado el liveness y la popularidad de las canciones a través de los años?
 
-- **Buscador** sobre las 151 mil canciones del dataset (título o artista, sin importar tildes). El dataset llega hasta 2020.
-- Las canciones agregadas se marcan con **borde verde y su nombre** en todas las vistas de la P1 (dispersión, coordenadas paralelas, Star Coordinates, RadViz). Sus **artistas** aparecen en la P2 y sus **años** como triángulos bajo el eje de la P3.
-- **«Ver solo mi playlist»** filtra las vistas a tus canciones y artistas.
-- **Mi playlist frente al catálogo**: percentil de cada atributo de tus canciones frente a las 151 mil (por ejemplo, «más bailable que el 67 % de las canciones»).
-- **Recomendar parecidas**: las 10 canciones más cercanas al promedio de tu playlist en tempo, energy, liveness y danceability (las mismas variables de la P1), con popularidad ≥ 30.
-- **Escuchar dentro de la app**: cada ▶ (playlist, recomendaciones, música para la intensidad, tarjeta de la canción fijada) reproduce la canción en una barra fija inferior, con ⏮ ⏭ para recorrer la lista y paso automático a la siguiente. En el mapa de la P4 también se reproduce haciendo clic en un punto. Usa el reproductor oficial de Spotify (IFrame API), que solo reproduce audio; los gráficos siguen siendo D3. Con sesión de Spotify iniciada en el mismo navegador se escucha la canción completa; sin sesión, Spotify da una vista previa de unos 30 s. Requiere internet.
-- La playlist se guarda en el navegador (localStorage), así que sigue ahí al recargar la página.
+**Task:** comparar la evolución temporal del liveness y la popularidad para identificar períodos en los que ambos presentan cambios o patrones similares.
 
-Artistas que no están en la muestra de la P2: t-SNE y UMAP no pueden proyectar puntos nuevos, así que el artista se ubica en la posición de su vecino más cercano de la muestra (en z-scores de loudness, danceability y liveness) y hereda su cluster. En RadViz, coordenadas paralelas y el perfil por banda se dibuja con sus valores reales.
+**Vistas:** series de tiempo con doble eje o puntaje z, correlación móvil con ventana ajustable y dispersión conectada animada.
 
-La búsqueda y las recomendaciones las calcula Flask (`/api/search`, `/api/similar`, `/api/artist`); el dibujo sigue siendo 100 % D3.
+**Hallazgos:**
+- En el siglo completo, las dos series van en sentidos opuestos (r = −0.61).
+- La correlación móvil de 10 años revela dos períodos en que se mueven juntas: **1956–1966** y **1991–2000**.
 
-## Interacciones
+### P4. ¿Cómo se distribuye la intensidad cardíaca de las sesiones según la actividad, y qué música encaja con cada intensidad?
 
-- Todas las vistas: hover con tooltip y resaltado enlazado; clic fija el elemento en la tarjeta lateral.
-- Filtros enlazados (AND) dentro de cada pregunta: brush en los small multiples, en la proyección, en cada eje de las coordenadas paralelas; el brush de años de P3 filtra también las canciones de P1.
-- Coordenadas paralelas: reordenar ejes arrastrando el título, doble clic para invertir, tres escalas animadas.
-- RadViz: arrastrar anclas, doble clic para apagarlas, añadir el ancla de popularidad (P2).
-- Star Coordinates: arrastrar ejes (dirección y peso), preset «Aislar» animado.
-- Proyección: transición animada entre PCA, t-SNE y UMAP.
-- P3: animación «Reproducir trayectoria», escala doble eje ↔ z, suavizado y ventana de correlación.
+**Task:** comparar las sesiones de entrenamiento por tipo de actividad según sus zonas de frecuencia cardíaca, % de FC máxima y strain, y vincular cada nivel de intensidad con canciones de tempo y energy acordes.
 
-## Justificación de diseño
+**Vistas:** barras de zonas cardíacas por actividad, RadViz con las cinco zonas como anclas, coordenadas paralelas de sesiones y mapa de música por intensidad.
 
-- Una sección por pregunta, con su dataset, su task y un hallazgo visible en la barra lateral.
-- Color con un propósito por pregunta: la variable respuesta (danceability en P1, popularity en P2) siempre es el color, y las técnicas multidimensionales muestran cómo se ordena respecto de los otros atributos.
-- Curvas de medias del dataset completo junto a la muestra: separan la tendencia (robusta) de la dispersión (visible), y muestran relaciones no lineales que la correlación esconde.
-- En P2 la muestra está estratificada por banda de popularidad; si no, los artistas populares (pocos) desaparecerían entre los demás.
-- En P3 la escala z pone ambas series en la misma unidad; la correlación móvil convierte «períodos similares» en algo medible.
-- El magenta se reserva para lo señalado o fijado y para la selección en los perfiles, para que no se confunda con ninguna escala de datos.
+**Puente entre datasets:** Spotify y WHOOP no comparten personas ni canciones. Se conectan con una **regla de diseño declarada**, no con un dato:
 
-## Orden de la exposición (12 minutos)
+| Intensidad | % de FC máxima | Tempo sugerido | Energy sugerida |
+|---|---|---|---|
+| Moderada | Menos de 70 % | 90 a 120 BPM | 0.3 a 0.6 |
+| Alta | 70 % a 80 % | 120 a 140 BPM | 0.6 a 0.8 |
+| Muy alta | Más de 80 % | 140 a 175 BPM | 0.8 o más |
 
-Antes de empezar: iniciar sesión en Spotify en el mismo navegador, abrir la app con zoom al 90 %, dejar 3 o 4 canciones ya cargadas en Mi playlist y poner la velocidad del laboratorio en «Normal».
+**Hallazgos:**
+- HIIT es la actividad más intensa (84 % de FC máxima, 49 % del tiempo en zonas 4 y 5). Walking es la más suave (69 % de FC máxima, 79 % en zonas 1 y 2).
+- Solo el 4.2 % del catálogo de canciones sirve para una sesión de intensidad muy alta.
+- Los días con recovery bajo se entrena más suave (strain 8.9 frente a 11.1).
+- El recovery depende de la HRV (r = +0.33) y de la FC en reposo (r = −0.41), pero casi nada del sueño (r = +0.01). En datos reales esto sería raro, lo que sugiere que **el dataset es sintético**.
 
-1. **Apertura (0:30).** Portada. Pregunta central: qué hace que una canción se baile, se escuche y sirva para entrenar. Dos datasets (Spotify y WHOOP) y una arquitectura simple: Python calcula, D3 dibuja.
-2. **Datos y decisiones (1:00).** Limpieza, muestreo estratificado por década, por banda de popularidad y por actividad, y normalización. Aclarar que los promedios siempre salen del dataset completo.
-3. **P1 Danceability (2:00).** Curva de tempo: la U invertida que la correlación no ve. Filtrar danceability alta en coordenadas paralelas. «Aislar Tempo» en Star Coordinates. Arrastrar un ancla de RadViz.
-4. **P2 Artistas (1:30).** Transición UMAP a PCA. Colorear por cluster y seleccionar «Sonido en vivo»: la línea verde del perfil baja. Añadir el ancla Popularity en RadViz.
-5. **P3 En el tiempo (1:30).** Puntaje z, franjas de co-movimiento y cambio de ventana. «Reproducir trayectoria». Arrastrar un rango de años y volver a la P1 para mostrar que también se filtró.
-6. **P4 WHOOP (2:00).** Clic en HIIT y luego en Yoga: el mapa musical cambia de intensidad. Reproducir una canción recomendada. Explicar que el puente es una regla de diseño y que el dataset parece sintético.
-7. **Mi playlist (1:00).** Buscar una canción en vivo, verla marcada en la P1 y en el mapa de la P4, y mostrar los percentiles.
-8. **Laboratorio (2:30).** Agrupar en vivo y explicar la inercia. Recomendar para mi playlist. Arrastrar la estrella y reproducir una recomendación. Es el cierre de mayor impacto.
-9. **Cierre (0:30).** Tres hallazgos (U invertida, efecto de época en la popularidad, dataset WHOOP sintético), limitaciones y preguntas.
+---
 
-Criterios de la rúbrica y dónde se muestran: RadViz (P1, P2, P4), Star Coordinates (P1), coordenadas paralelas con escalado y brushing (P1, P2, P4), proyecciones PCA, t-SNE y UMAP (P2 y laboratorio), más de tres tareas (P1 a P4), interacción y animación (todas las secciones).
+## 4. Laboratorio de recomendación
+
+Muestra paso a paso cómo se construye una recomendación, sin cajas negras.
+
+| Paso | Qué se ve |
+|---|---|
+| 1. Espacio 4D | 3 000 canciones populares ubicadas según tempo, liveness, energy y danceability. El mapa usa PCA y conserva el 69 % de la información. |
+| 2. K-means en vivo | Las canciones cambian de cluster, los centroides se mueven, los contornos se deforman y la curva de inercia baja hasta converger. |
+| 3. Tu centro | Las canciones de tu playlist se unen en una estrella verde, que es su promedio en las cuatro dimensiones. |
+| 4. Vecinos | Un radio de búsqueda crece y las 10 canciones más cercanas se conectan una por una, en orden de distancia. |
+| 5. Exploración | Al arrastrar la estrella, las recomendaciones se recalculan en tiempo real. |
+
+Cada recomendación muestra qué tan cerca está de tu centro y en qué atributos se diferencia. Se puede escuchar y agregar a la playlist.
+
+---
+
+## 5. Mi playlist
+
+Ubicada en el panel izquierdo de la app.
+
+- **Buscador:** encuentra cualquiera de las 151 mil canciones por título o artista. El dataset llega hasta 2020.
+- **Marcado en las vistas:** tus canciones aparecen en verde en la P1, sus artistas en la P2, sus años en la P3 y su intensidad en el mapa de la P4.
+- **Comparación:** muestra en qué percentil está tu playlist frente al catálogo, por ejemplo "más bailable que el 67 % de las canciones".
+- **Recomendar parecidas:** lleva al Laboratorio y ejecuta la animación de recomendación.
+- **Reproducción integrada:** cada botón ▶ reproduce la canción en la barra inferior, con anterior, siguiente y avance automático.
+- **Guardado:** la playlist se conserva al recargar la página.
+
+**Sobre el reproductor:** usa el reproductor oficial de Spotify, que solo reproduce audio; todos los gráficos siguen siendo D3. Con sesión de Spotify iniciada en el mismo navegador se escucha la canción completa. Sin sesión, Spotify reproduce una vista previa de unos 30 segundos.
+
+---
+
+## 6. Interacciones
+
+| Vista | Interacción |
+|---|---|
+| Todas | Tooltip al pasar el cursor, resaltado en todas las vistas y clic para ver el detalle |
+| Dispersión (P1) | Selección de rangos arrastrando en horizontal |
+| Coordenadas paralelas | Filtro por eje, reordenar ejes, invertir ejes y tres tipos de escala |
+| RadViz | Arrastrar anclas, apagarlas con doble clic y añadir el ancla de popularidad |
+| Star Coordinates | Arrastrar ejes para cambiar dirección y peso, y opción «Aislar» |
+| Proyección (P2) | Transición animada entre PCA, t-SNE y UMAP, y selección por área |
+| Series de tiempo (P3) | Filtro por años que también afecta a la P1, cambio de escala y animación de trayectoria |
+| Zonas (P4) | Clic en una actividad para filtrar toda la sección |
+| Mapa musical (P4) | Clic en un punto para escuchar la canción |
+| Laboratorio | K-means animado, recomendación paso a paso y estrella arrastrable |
+
+---
+
+## 7. Decisiones de diseño
+
+- **Una sección por pregunta**, cada una con su dataset, su task y su hallazgo visible en el panel derecho.
+- **El color siempre es la variable respuesta:** danceability en la P1 y popularidad en la P2. Así las técnicas multidimensionales muestran cómo se ordena respecto de los demás atributos.
+- **Curvas del dataset completo sobre la muestra:** separan la tendencia de la dispersión y revelan relaciones no lineales que la correlación no detecta.
+- **Muestreo estratificado:** evita que los grupos pequeños desaparezcan entre los grandes.
+- **Puntaje z y correlación móvil en la P3:** ponen ambas series en la misma escala y convierten "períodos similares" en algo medible.
+- **Verde reservado para lo seleccionado:** la canción fijada, tu playlist y tu selección nunca se confunden con una escala de datos.
+- **Interfaz inspirada en Spotify:** navegación y biblioteca a la izquierda, contenido al centro, detalle a la derecha y reproductor abajo. No usa logos ni marcas de Spotify.
+
+---
+
+## 8. Cumplimiento de la rúbrica
+
+| Requisito | Dónde se cumple |
+|---|---|
+| RadViz | P1, P2 y P4 |
+| Star Coordinates con arrastre de ejes | P1 |
+| Coordenadas paralelas con escalado y brushing | P1, P2 y P4 |
+| Técnica de proyección | PCA, t-SNE y UMAP en la P2, y PCA en el Laboratorio |
+| Al menos tres tareas analíticas | Cuatro preguntas más el Laboratorio |
+| Interacción y animación | Todas las secciones |
+| Solo D3 para visualizar | Todos los gráficos |
+| Aplicación Flask con datos | `app.py` y carpeta `data/` |
+
+---
+
+## 9. Orden de la exposición
+
+**Duración total:** 12 minutos.
+
+**Antes de empezar:**
+- Iniciar sesión en Spotify en el mismo navegador.
+- Abrir la app con zoom al 90 %.
+- Dejar 3 o 4 canciones cargadas en Mi playlist.
+- Poner la velocidad del Laboratorio en «Normal».
+
+| # | Bloque | Tiempo | Qué mostrar |
+|---|---|---|---|
+| 1 | Apertura | 0:30 | Portada y pregunta central: qué hace que una canción se baile, se escuche y sirva para entrenar. Arquitectura: Python calcula, D3 dibuja. |
+| 2 | Datos | 1:00 | Limpieza, muestreo estratificado y normalización. Los promedios salen del dataset completo. |
+| 3 | P1 Danceability | 2:00 | U invertida del tempo, filtro en coordenadas paralelas, «Aislar Tempo» y ancla de RadViz. |
+| 4 | P2 Artistas | 1:30 | Transición de UMAP a PCA, selección del cluster «Sonido en vivo» y ancla de popularidad. |
+| 5 | P3 En el tiempo | 1:30 | Puntaje z, períodos sombreados, animación de trayectoria y filtro de años que afecta a la P1. |
+| 6 | P4 WHOOP | 2:00 | Clic en HIIT y luego en Yoga, reproducir una canción recomendada, regla de diseño y dataset sintético. |
+| 7 | Mi playlist | 1:00 | Buscar una canción en vivo y verla marcada en la P1 y en la P4. |
+| 8 | Laboratorio | 2:30 | K-means en vivo, recomendación animada, arrastrar la estrella y reproducir una recomendación. |
+| 9 | Cierre | 0:30 | Tres hallazgos, limitaciones y preguntas. |
+
+**Los tres hallazgos del cierre:**
+1. La danceability tiene forma de U invertida con el tempo, algo que la correlación no detecta.
+2. La popularidad de los artistas refleja en parte la época, no solo el sonido.
+3. El dataset de WHOOP parece sintético, y la visualización lo deja en evidencia.
