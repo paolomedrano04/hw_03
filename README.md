@@ -3,7 +3,7 @@
 **Curso:** DS5343 Visualización de Datos, UTEC 2026-2
 **Tarea 3:** Multidimensional Data Visualization
 **Tecnología:** Flask (Python) para los datos y D3 v7 para toda la visualización
-***Integrantes: *** Paolo Medrano & Gianella Lira
+
 Aplicación web que responde cuatro preguntas con RadViz, Star Coordinates, coordenadas paralelas y proyecciones PCA, t-SNE y UMAP. Incluye una playlist personal que se escucha dentro de la app y un laboratorio que muestra en vivo cómo se genera una recomendación.
 
 ---
