@@ -1,0 +1,6 @@
+flask>=3.0
+# Solo para regenerar data/processed (no se necesitan para ejecutar la app):
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+umap-learn>=0.5

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sound Lab | DS5343</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎧</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="app">
+  <nav class="left" aria-label="Navegación">
+    <div class="box brand">
+      <span class="logo" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div><b>Sound Lab</b><span>DS5343 Visualización de Datos</span></div>
+    </div>
+    <div class="box">
+      <div class="tabs" role="tablist" id="nav"></div>
+    </div>
+    <div class="box library" id="playlist"></div>
+  </nav>
+
+  <main class="center">
+    <header class="masthead">
+      <p class="kicker">Visualización multidimensional</p>
+      <h1>Bailar, sonar fuerte, sonar en vivo</h1>
+      <p class="lede" id="lede">Cargando datos…</p>
+    </header>
+
+  <!-- ============================ PREGUNTA 1 ============================ -->
+  <section class="question" id="q1">
+    <div class="q-head">
+      <p class="q-num">Pregunta 1 <code>data</code></p>
+      <h2>¿Cómo varía la danceability de una canción en relación con su tempo, liveness y energy?</h2>
+      <p class="q-task"><b>Task:</b> comparar la danceability según las variaciones de tempo, liveness y energy para identificar patrones entre estos atributos.</p>
+      <div class="q-bar">
+        <label class="select">Color
+          <select id="q1-color">
+            <option value="danceability">Danceability</option>
+            <option value="energy">Energy</option>
+            <option value="popularity">Popularity</option>
+            <option value="year">Año</option>
+          </select>
+        </label>
+        <div class="legend-inline" id="q1-legend"></div>
+        <span class="count" id="q1-count"></span>
+        <span class="link-note" id="q1-link"></span>
+        <button class="btn ghost" id="q1-clear" type="button">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h3>Danceability frente a cada atributo</h3></div>
+      <p class="hint">Cada punto es una canción. La línea blanca es el promedio de las 151 mil canciones. Arrastra en horizontal para filtrar.</p>
+      <div id="q1-profile" class="view"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Coordenadas paralelas</h3>
+        <label class="select">Escala
+          <select id="q1-scale">
+            <option value="minmax">Mínimo–máximo</option>
+            <option value="robust">Robusta (percentil 2–98)</option>
+            <option value="z">Puntaje z (±3σ)</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Arrastra sobre un eje para filtrar y arrastra su nombre para reordenar.</p>
+      <div id="q1-pc" class="view"></div>
+    </section>
+
+    <div class="grid two">
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Star Coordinates</h3>
+          <div class="controls">
+            <div class="seg" id="q1-iso" role="group" aria-label="Aislar un eje"></div>
+            <button class="btn ghost" id="q1-star-reset" type="button">Restablecer</button>
+          </div>
+        </div>
+        <p class="hint">Arrastra el extremo de un eje para cambiar su peso. «Aislar» deja un solo atributo en horizontal.</p>
+        <div id="q1-star" class="view"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h3>RadViz</h3>
+          <button class="btn ghost" id="q1-rv-reset" type="button">Restablecer</button>
+        </div>
+        <p class="hint">Arrastra un ancla por el borde. Doble clic la apaga.</p>
+        <div id="q1-rv" class="view"></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============================ PREGUNTA 2 ============================ -->
+  <section class="question" id="q2">
+    <div class="q-head">
+      <p class="q-num">Pregunta 2 <code>by_artist</code></p>
+      <h2>¿Cómo se relaciona la popularidad de los artistas con loudness, liveness y danceability?</h2>
+      <p class="q-task"><b>Task:</b> identificar y comparar patrones en la popularidad de los artistas según sus niveles de loudness, liveness y danceability.</p>
+      <div class="q-bar">
+        <label class="select">Color
+          <select id="q2-color">
+            <option value="popularity">Popularity</option>
+            <option value="cluster">Cluster (K-means)</option>
+            <option value="loudness">Loudness</option>
+            <option value="danceability">Danceability</option>
+          </select>
+        </label>
+        <div class="legend-inline" id="q2-legend"></div>
+        <span class="count" id="q2-count"></span>
+        <button class="btn ghost" id="q2-clear" type="button">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Proyección de artistas</h3>
+          <div class="seg" id="q2-method" role="group" aria-label="Método de proyección"></div>
+        </div>
+        <p class="hint" id="q2-caption"></p>
+        <div id="q2-proj" class="view"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h3>RadViz</h3>
+          <div class="controls">
+            <button class="btn" id="q2-rv-pop" type="button" aria-pressed="false">Añadir ancla Popularity</button>
+            <button class="btn ghost" id="q2-rv-reset" type="button">Restablecer</button>
+          </div>
+        </div>
+        <p class="hint">Si los artistas populares (colores claros) se acercan a un ancla, ese atributo acompaña a la popularidad.</p>
+        <div id="q2-rv" class="view"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h3>Perfil por banda de popularidad</h3></div>
+      <p class="hint">Línea blanca: todos los artistas. Línea verde: tu selección en las otras vistas.</p>
+      <div id="q2-bands" class="view"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Coordenadas paralelas</h3>
+        <label class="select">Escala
+          <select id="q2-scale">
+            <option value="minmax">Mínimo–máximo</option>
+            <option value="robust">Robusta (percentil 2–98)</option>
+            <option value="z">Puntaje z (±3σ)</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Filtra Popularity y observa los otros tres ejes.</p>
+      <div id="q2-pc" class="view"></div>
+    </section>
+  </section>
+
+  <!-- ============================ PREGUNTA 3 ============================ -->
+  <section class="question" id="q3">
+    <div class="q-head">
+      <p class="q-num">Pregunta 3 <code>year</code></p>
+      <h2>¿Cómo han variado el liveness y la popularidad de las canciones a través de los años?</h2>
+      <p class="q-task"><b>Task:</b> comparar la evolución temporal del liveness y la popularidad para identificar períodos en los que ambos presentan cambios o patrones similares.</p>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Liveness y popularidad, 1921–2020</h3>
+        <div class="controls">
+          <div class="seg" id="q3-mode" role="group" aria-label="Escala">
+            <button type="button" data-v="dual">Doble eje</button>
+            <button type="button" data-v="z">Puntaje z</button>
+          </div>
+          <label class="select">Suavizado
+            <select id="q3-smooth"><option value="1">Ninguno</option><option value="5">5 años</option><option value="10">10 años</option></select>
+          </label>
+          <label class="select">Ventana r
+            <select id="q3-win"><option value="5">5 años</option><option value="10">10 años</option><option value="15">15 años</option><option value="20">20 años</option></select>
+          </label>
+        </div>
+      </div>
+      <p class="hint">Las franjas marcan los períodos en que ambas series se mueven juntas. Arrastra sobre los años para filtrar también la Pregunta 1.</p>
+      <div id="q3-ts" class="view"></div>
+      <div id="q3-corr" class="view"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Trayectoria conjunta (dispersión conectada)</h3>
+        <button class="btn" id="q3-play" type="button" aria-pressed="false">Reproducir trayectoria</button>
+      </div>
+      <p class="hint">Cada punto es un año. Hacia arriba y a la izquierda: sube la popularidad y baja el liveness.</p>
+      <div id="q3-cs" class="view"></div>
+    </section>
+  </section>
+
+  <!-- ============================ PREGUNTA 4 ============================ -->
+  <section class="question" id="q4">
+    <div class="q-head">
+      <p class="q-num">Pregunta 4 <code>whoop</code> y <code>data</code></p>
+      <h2>¿Cómo se distribuye la intensidad cardíaca de las sesiones según la actividad, y qué música encaja con cada intensidad?</h2>
+      <p class="q-task"><b>Task:</b> comparar las sesiones de entrenamiento por tipo de actividad según sus zonas de frecuencia cardíaca, % de FC máxima y strain, y vincular cada nivel de intensidad con canciones de tempo y energy acordes.</p>
+      <div class="q-bar">
+        <label class="select">Color
+          <select id="q4-color">
+            <option value="act">Actividad</option>
+            <option value="level">Intensidad</option>
+            <option value="recovery">Recovery</option>
+            <option value="pmax">% FC máx</option>
+          </select>
+        </label>
+        <div class="legend-inline" id="q4-legend"></div>
+        <span class="count" id="q4-count"></span>
+        <button class="btn ghost" id="q4-clear" type="button">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h3>Zonas de frecuencia cardíaca por actividad</h3></div>
+      <p class="hint">Tiempo de sesión en cada zona, sobre 54 mil sesiones. Clic en una actividad para filtrar.</p>
+      <div id="q4-zones" class="view"></div>
+    </section>
+
+    <div class="grid two">
+      <section class="panel">
+        <div class="panel-head">
+          <h3>RadViz de zonas</h3>
+          <button class="btn ghost" id="q4-rv-reset" type="button">Restablecer</button>
+        </div>
+        <p class="hint">Cada sesión se acerca a la zona donde pasó más tiempo.</p>
+        <div id="q4-rv" class="view"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Música para la intensidad</h3>
+          <div class="seg" id="q4-level" role="group" aria-label="Nivel de intensidad"></div>
+        </div>
+        <p class="hint">Los rectángulos son la regla que asigna música a cada intensidad. Tu playlist tiene borde verde.</p>
+        <div id="q4-music" class="view"></div>
+        <p class="pl-sum" id="q4-summary"></p>
+        <div id="q4-recs"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h3>Coordenadas paralelas de sesiones</h3>
+        <label class="select">Escala
+          <select id="q4-scale">
+            <option value="minmax">Mínimo–máximo</option>
+            <option value="robust">Robusta (percentil 2–98)</option>
+            <option value="z">Puntaje z (±3σ)</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Filtra y observa qué intensidad predomina en el mapa musical.</p>
+      <div id="q4-pc" class="view"></div>
+    </section>
+  </section>
+
+  <!-- ============================ LABORATORIO ============================ -->
+  <section class="question" id="lab">
+    <div class="q-head">
+      <p class="q-num">Laboratorio de recomendación</p>
+      <h2>¿Cómo encuentra la app tus próximas canciones?</h2>
+      <p class="q-task"><b>Task:</b> mostrar paso a paso cómo se agrupan 3 000 canciones populares por tempo, liveness, energy y danceability (K-means) y cómo el centro de tu playlist encuentra a sus vecinos más cercanos.</p>
+      <div class="q-bar" id="lab-controls">
+        <label class="select">Clusters (k) <input type="range" id="lab-k" min="2" max="8" value="5"><output id="lab-k-out">5</output></label>
+        <label class="select">Velocidad
+          <select id="lab-speed"><option value="0.5">Lenta</option><option value="1" selected>Normal</option><option value="2.5">Rápida</option></select>
+        </label>
+        <button class="btn pill" id="lab-run" type="button">Agrupar en vivo</button>
+        <button class="btn pill green" id="lab-reco" type="button">Recomendar para mi playlist</button>
+        <button class="btn ghost" id="lab-stop" type="button" disabled>Detener</button>
+      </div>
+    </div>
+    <div class="lab-grid">
+      <section class="panel lab-map-panel">
+        <p class="lab-status" id="lab-status" aria-live="polite">Pulsa «Agrupar en vivo» para ver cómo K-means organiza las canciones, y luego «Recomendar para mi playlist».</p>
+        <div id="lab-map" class="view"></div>
+        <p class="hint">Clic en un punto para escuchar. Mayús+clic para usarlo como semilla. Arrastra la estrella para explorar.</p>
+      </section>
+      <aside class="lab-side">
+        <section class="panel">
+          <h3>El algoritmo</h3>
+          <ol class="steps" id="lab-steps">
+            <li data-step="kmeans"><b>K-means</b><span>asigna cada canción al centroide más cercano y mueve los centroides al promedio</span></li>
+            <li data-step="centro"><b>Tu centro</b><span>promedio 4D de tus canciones</span></li>
+            <li data-step="cluster"><b>Tu cluster</b><span>el grupo más cercano a tu centro</span></li>
+            <li data-step="vecinos"><b>Vecinos</b><span>las 10 canciones a menor distancia euclidiana 4D</span></li>
+            <li data-step="listo"><b>Explora</b><span>arrastra la estrella y todo se recalcula</span></li>
+          </ol>
+          <div id="lab-inertia" class="view"></div>
+        </section>
+        <section class="panel">
+          <h3>Clusters</h3>
+          <div id="lab-profiles"></div>
+        </section>
+      </aside>
+    </div>
+    <section class="panel">
+      <div class="panel-head"><h3>Recomendaciones</h3><span class="hint">La barra verde indica cercanía; las azules, en qué se diferencia cada canción de tu centro.</span></div>
+      <div id="lab-list"></div>
+    </section>
+  </section>
+
+  <footer class="foot">
+    <p>DS5343 Visualización de Datos, UTEC 2026-2. Datos: Spotify Dataset 1921–2020 y WHOOP Fitness Dataset (Kaggle). Cálculos en Python; visualización e interacción en D3 v7. Interfaz inspirada en Spotify; no afiliada a Spotify.</p>
+  </footer>
+  </main>
+
+  <aside class="right" aria-label="Detalle">
+    <div class="side-inner">
+      <section class="block">
+        <h3>Hallazgo</h3>
+        <div id="finding" class="task-body"></div>
+      </section>
+      <section class="block" id="card">
+        <h3>Elemento fijado</h3>
+        <p class="hint">Haz clic en un punto, línea o año para verlo aquí.</p>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
+<script src="{{ url_for('static', filename='js/d3.v7.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
